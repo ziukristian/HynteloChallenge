@@ -52,15 +52,16 @@ app.UseHttpsRedirection();
 
 app.UseCors();
 
-app.MapGet("/posts", async (AppDbContext db, int page = 1, int pageSize = 10) =>
+app.MapGet("/posts", async (AppDbContext db, int page = 1, int pageSize = 5) =>
 {
     if (page < 1) page = 1;
-    if (pageSize < 1) pageSize = 10;
+    if (pageSize < 1) pageSize = 5;
 
     var numberOfPosts = await db.Posts.CountAsync();
     var numberOfPages = (int)Math.Ceiling(numberOfPosts / (double)pageSize);
 
     var posts = await db.Posts
+        .OrderByDescending(c => c.Id)
         .Skip((page - 1) * pageSize)
         .Take(pageSize)
         .ToListAsync();
@@ -106,19 +107,20 @@ app.MapGet("/posts/{postId}/comments", async (AppDbContext db, int postId, int p
     }
 
     if (page < 1) page = 1;
-    if (pageSize < 1) pageSize = 10;
+    if (pageSize < 1) pageSize = 5;
 
     var numberOfComments = await db.Comments.Where(c => c.PostId == postId).CountAsync();
     var numberOfPages = (int)Math.Ceiling(numberOfComments / (double)pageSize);
 
     var comments = await db.Comments.Where(c => c.PostId == postId)
+        .OrderBy(c => c.Id)
         .Skip((page - 1) * pageSize)
         .Take(pageSize)
         .ToListAsync();
 
     var result = new
     {
-        TotalPosts = numberOfComments,
+        TotalComments = numberOfComments,
         Page = page,
         PageSize = pageSize,
         TotalPages = numberOfPages,

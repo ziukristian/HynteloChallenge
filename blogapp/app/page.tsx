@@ -1,7 +1,7 @@
 "use client";
-import { AppShell, Center, Container, Stack, Flex, Avatar, Skeleton, Card, Text, Button } from "@mantine/core";
+import { AppShell, Center, Container, Stack, Flex, Avatar, Skeleton, Card, Text, Button, Pagination } from "@mantine/core";
 import { showNotification } from "@mantine/notifications";
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Cookies from "js-cookie";
 import axios from "axios";
 import { useRouter } from "next/navigation";
@@ -10,10 +10,10 @@ import Post from "@/types/Post";
 export default function Home() {
     const [user, setUser] = useState("user");
     const [loading, setLoading] = useState(true);
-    const [posts, setPosts] = useState<Post[]>([]);
+    const [postsData, setPostsData] = useState<any>({});
+    const [page, setPage] = useState(1);
 
     const router = useRouter();
-    var userid = null;
 
     useEffect(() => {
         // Fetch user data from cache
@@ -25,7 +25,7 @@ export default function Home() {
         // Fetch data of posts from server
         axios("http://localhost:8080/posts")
             .then((data) => {
-                setPosts(data.data.posts);
+                setPostsData(data.data);
                 setLoading(false);
             })
             .catch((error) => {
@@ -35,6 +35,23 @@ export default function Home() {
                 setLoading(false);
             });
     }, []);
+
+    useEffect(() => {
+        setLoading(true);
+        // Fetch data of posts from server
+        axios("http://localhost:8080/posts?page=" + page + "&pageSize=5")
+            .then((data) => {
+                setPostsData(data.data);
+                console.log(data.data);
+                setLoading(false);
+            })
+            .catch((error) => {
+                showNotification({ message: error.response.data, color: "red", title: "Error" });
+            })
+            .finally(() => {
+                setLoading(false);
+            });
+    }, [page]);
 
     const handleBlogPostClick = (post: Post) => {
         router.push(`/post/${post.id}`);
@@ -71,7 +88,7 @@ export default function Home() {
                                     New Post
                                 </Button>
                             </div>
-                            {posts.map((post) => (
+                            {postsData?.posts.map((post: Post) => (
                                 <Card onClick={() => handleBlogPostClick(post)} key={post.id} style={{ cursor: "pointer" }} shadow="sm" padding="lg" radius="md" withBorder>
                                     <Text component={"span"} fw={500}>
                                         <Center>{post.title}</Center>
@@ -84,12 +101,17 @@ export default function Home() {
                                             whiteSpace: "nowrap",
                                             overflow: "hidden",
                                             textOverflow: "ellipsis",
+                                            display: "block",
                                         }}
                                     >
                                         <Center>{post.body}</Center>
                                     </Text>
                                 </Card>
                             ))}
+                            <br />
+                            <Center>
+                                <Pagination total={postsData.totalPages == 1 ? 0 : postsData.totalPages} value={postsData.page} onChange={setPage} mt="sm" />
+                            </Center>
                         </Stack>
                     )}
                 </main>

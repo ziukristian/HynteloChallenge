@@ -1,5 +1,5 @@
 "use client";
-import { AppShell, Center, Container, Stack, Flex, Avatar, Skeleton, Card, Text, TextInput, Button } from "@mantine/core";
+import { AppShell, Center, Container, Stack, Flex, Avatar, Skeleton, Card, Text, TextInput, Button, Pagination } from "@mantine/core";
 import { useForm, isNotEmpty, isEmail, isInRange, hasLength, matches } from "@mantine/form";
 import { showNotification } from "@mantine/notifications";
 import { use, useEffect, useState } from "react";
@@ -11,7 +11,10 @@ import { Comment } from "@/types/Comment";
 export default function Post({ params }: { params: { id: number } }) {
     const [user, setUser] = useState("user");
     const [loading, setLoading] = useState(true);
+    const [loadingComments, setLoadingComments] = useState(true);
     const [post, setPost] = useState<any>({});
+    const [commentsData, setCommentsData] = useState<any>({});
+    const [page, setPage] = useState(1);
 
     const form = useForm({
         mode: "controlled",
@@ -44,7 +47,35 @@ export default function Post({ params }: { params: { id: number } }) {
             .finally(() => {
                 setLoading(false);
             });
+
+        axios("http://localhost:8080/posts/" + params.id + "/comments?page=1&pageSize=5")
+            .then((data) => {
+                setCommentsData(data.data);
+                setLoadingComments(false);
+            })
+            .catch((error) => {
+                showNotification({ message: error.response.data, color: "red", title: "Error" });
+            })
+            .finally(() => {
+                setLoadingComments(false);
+            });
     }, []);
+
+    useEffect(() => {
+        // Fetch data of posts from server
+        axios("http://localhost:8080/posts/" + params.id + "/comments?page=" + page + "&pageSize=5")
+            .then((data) => {
+                setCommentsData(data.data);
+                console.log(data.data);
+                setLoadingComments(false);
+            })
+            .catch((error) => {
+                showNotification({ message: error.response.data, color: "red", title: "Error" });
+            })
+            .finally(() => {
+                setLoadingComments(false);
+            });
+    }, [page]);
 
     const handleNewCommentSubmit = (values: typeof form.values) => {
         if (!form.isValid) {
@@ -61,7 +92,12 @@ export default function Post({ params }: { params: { id: number } }) {
         axios
             .post("http://localhost:8080/posts/" + params.id + "/comments", newComment)
             .then((data) => {
-                setPost({ ...post, comments: [...post.comments, newComment] });
+                if (commentsData.comments.length < 5) {
+                    setCommentsData({ ...commentsData, comments: [...commentsData.comments, data.data] });
+                } else {
+                    setPage(page + 1);
+                }
+
                 showNotification({ message: "Comment created successfully", color: "green", title: "Success" });
             })
             .catch((error) => {
@@ -91,6 +127,9 @@ export default function Post({ params }: { params: { id: number } }) {
                     {loading ? (
                         <>
                             <Skeleton height={100} mt={6} radius="xl" />
+                        </>
+                    ) : loadingComments ? (
+                        <>
                             <Skeleton height={100} mt={6} radius="xl" />
                             <Skeleton height={100} mt={6} radius="xl" />
                         </>
@@ -126,13 +165,17 @@ export default function Post({ params }: { params: { id: number } }) {
                                     </Button>
                                 </form>
                             </Card>
-                            {post.comments.map((comment: Comment) => (
+                            {commentsData.comments?.map((comment: Comment) => (
                                 <Card my={5} key={comment.id} style={{ cursor: "pointer" }} shadow="sm" padding="lg" radius="md" withBorder>
                                     <Text component={"span"} size="sm" c="dimmed">
                                         <Center>{comment.body}</Center>
                                     </Text>
                                 </Card>
                             ))}
+                            <br />
+                            <Center>
+                                <Pagination total={commentsData.totalPages == 1 ? 0 : commentsData.totalPages} value={commentsData.page} onChange={setPage} mt="sm" />
+                            </Center>
                         </>
                     )}
                 </main>
