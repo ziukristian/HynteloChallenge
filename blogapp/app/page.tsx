@@ -23,7 +23,7 @@ export default function Home() {
         }
 
         // Fetch data of posts from server
-        axios("http://localhost:8080/posts")
+        axios("http://localhost:8080/posts?page=" + page + "&pageSize=5")
             .then((data) => {
                 setPostsData(data.data);
                 setLoading(false);
